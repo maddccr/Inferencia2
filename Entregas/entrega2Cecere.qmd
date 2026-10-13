@@ -1,0 +1,202 @@
+---
+title: "Entrega 2"
+format: pdf
+editor: visual
+author: Cecere
+---
+
+# Entrega 2 - Inferencia 2
+
+## Madeline Cecere
+
+### Ejercicio 2: algoritmo de rechazo
+
+El *algoritmo de rechazo* es un procedimiento para generar simulaciones *independientes* de una distribución de la que no sabemos simular directamente.
+
+En este ejercicio, vamos a generar muestras de una $\operatorname{Beta}(2, 5)$ **sin usar** `rbeta()`, usando el algoritmo de rechazo con un propuesta $\operatorname{Unif}(0,1)$.
+
+Los pasos del algoritmo son:
+
+1.  Proponer un candidato $\theta^* \sim \operatorname{Unif}(0,1)$ (propuesta).
+2.  Calcular $f(\theta^*)$, la densidad objetivo (en este caso, la densidad de la $\operatorname{Beta}(2,5)$) evaluada en el candidato.
+3.  Aceptar el candidato con probabilidad $f(\theta^*) / M$, donde $M$ es una cota superior de $f$ en el soporte (por ejemplo, el máximo de la densidad).
+4.  Repetir hasta juntar la cantidad de muestras deseada.
+
+Se pide:
+
+a)  Obtener 5000 valores simulados de $\operatorname{Beta}(2, 5)$
+
+b)  comparar la simulaciones obtenidas con la distribución teórica
+
+**Respuestas:**
+
+En este caso de prueba contamos con la forma analítica de la densidad objetivo y no con datos, por lo tanto hallaremos un $M$ para el algoritmo mediante una fórmula algebráica. Dado que la propuesta $g(\theta)$ es una uniforme, es decir constante, tiene sentido multiplicarla por el máximo de la densidad, siendo entonces mayor o igual al máximo para todo el recorrido y por lo tanto envolvente de $f$
+
+Sea $X \sim Beta(\alpha, \beta)$ con $\alpha, \beta > 1$ se tiene que (Notas de Inferencia 1):
+
+$$
+Moda(X) = \frac{\alpha -1}{\alpha + \beta -2}
+$$
+
+```{r}
+#CODIGO SACADO DEL QMD DEL PRACTICO 2 // SIMPLEMTO COMPLETO LO FALTANTE
+
+#Parámetros de la Beta
+
+a <- 2
+b <- 5
+
+#Candidato a M
+
+moda_beta <- (a -1)/(a + b - 2) #argmax!
+max_beta <- dbeta(moda_beta, a, b) #evaluar la funcion/densidad en el argmax
+
+```
+
+```{r}
+
+#El algoritmo de rechazo
+
+set.seed(2026) #:)
+
+S <- 5000 #cantidad de simus pedidas
+
+theta_sim <- c() #Guardar simus // aumenta de forma dinamica
+
+while (length(theta_sim) < S) {
+#El while para cuando se llega a 5000 o mas aceptaciones
+  
+  #necesitamos valores de theta en el recorrido // sample
+  theta_star <- runif(S, 0, 1)  
+  
+  #Probabilidad de aceptación
+  prob_acept <- dbeta(theta_star, a, b)/max_beta #f(theta)/M
+  
+  #Uniformes para decidir aceptación/rechazo
+  u <- runif(S, 0, 1)
+  
+  theta_sim <- c(theta_sim,
+                 theta_star[u <= prob_acept] #condicion de aceptacion
+                 )
+}
+
+theta_sim <- theta_sim[1:S] #solo los primeros 5000
+```
+
+```{r}
+#Un vistazo a la simulacion 
+head(theta_sim)
+summary(theta_sim)
+moda_beta
+```
+
+```{r}
+#Comparación
+
+hist(theta_sim,
+     probability = TRUE,
+     breaks = ,
+     xlim = c(0, 1),
+     xlab = expression(theta),
+     ylab = "Densidad",
+     col = "lightpink",
+     border = "white",
+     main = "Simulación por rechazo de Beta(2,5)")
+
+# Densidad teórica
+curve(expr = dbeta(x, 2, 5),
+      from = 0,
+      to = 1,
+      add = TRUE,
+      col = "deeppink",
+      lwd = 2)
+
+#Tambien podemos comparar con algunas medidas de resumen
+
+#TEORICAS
+esperanza <- a / (a + b)
+varianza <- (a*b) /( (a + b + 1)*(a + b)^2)
+
+paste0("Esperanza Teórica: ", round(esperanza, 3))
+paste0("Varianza Teórica: ", round(varianza,3))
+
+#SIMULADAS
+
+paste0("Esperanza Simulada: ", round(mean(theta_sim), 3))
+paste0("Varianza Simulada: ", round(var(theta_sim),3))
+
+
+#O con las distibuciones acumuladas...
+
+qqplot(
+  qbeta(ppoints(5000), a, b),
+  sort(theta_sim),
+  main = "QQplot: Simulación vs Teórica",
+  cex = 0.7,
+  col = "lightpink",
+  xlab = "Cuantiles teóricos",
+  ylab = "Cuantiles simulados"
+)
+
+abline(0, 1, lwd = 2, col = "deeppink")
+
+```
+
+## Ejercicio 4. Contaminación en playas de Montevideo
+
+La Intendencia de Montevideo mide diariamente la concentración de enterococos fecales en sus playas. El valor límite para considerar la playa apta para el baño es de 500. A continuación están los valores medidos el 3 de setiembre en las playas de Montevideo:
+
+```{r}
+
+enterococos <- c(670, 1700, 150, 710, 30, 70, 230, 20, 30, 130, 80, 40, 120, 100, 330, 140, 230, 120)
+```
+
+Proporcione una estimación bayesiana de la probabilidad de que una playa seleccionada al azar tenga un valor **mayor o igual** al límite de 500. Describa todos los detalles relevantes: qué modelo utilizó, qué prior utilizó, qué supuestos hace y qué limitaciones tiene.
+
+**Respuestas:**
+
+Dados que para realizar la estimación nos interesa capturar la proporción de playas con valor superior (o igual) al umbral, proponemos un modelo *Binomial* para los datos. Primero, para cada playa definimos la variable:
+
+$$
+Y_i \sim Bernoulli(\theta)
+$$Donde $Y_i = 1$ si la concentación es mayor o igual a 500 e $Y_i = 0$ si es menor. Por lo tanto, el parámetro buscado es $\theta = P(Y_i = 1)$, es decir, la probabilidad de que la playa tenga concentración mayor o igual a 500.
+
+Luego para las $n = 18$ playas (asumiendo **i.i.d**), tenemos que $$
+Y = \sum_{i = 1}^{18} Y_i \sim Binominal(18, \theta)
+$$ Siendo este el modelo para nuestros datos. Como $\theta \in [0,1]$, una previa coherente pero poco informativa (la probilidad esta distribuida de forma constante en todo el recorrido sin preferencia sobre ningún subconjunto de valores) es: $$
+\theta \sim Unif(0,1) = Beta (1,1)
+$$ Dado que el modelo de los datos es binomial, esta previa es conjungada y la posterior conocida:
+
+$$
+\theta \mid Y \sim Beta(1 + k, 1 + n - k)
+$$ Donde $k$ es la cantidad de playas que supera el umbral, en nuestros datos la cantidad es $k = 3$ y por lo tanto:
+
+$$
+\theta \mid Y \sim Beta(4, 16)
+$$
+
+Teniendo la distribución posterior podemos realizar la estimación bayesiana
+
+```{r}
+
+k <- sum(enterococos >= 500)
+n <- length(enterococos)
+
+a_post <- 1 + k
+b_post <- 1 + n - k
+
+#Estimacion puntual de la media posterior
+media <- a_post / (a_post + b_post) #formula conocida
+
+#Intervalo de credibilidad 95%
+IC <- qbeta(c(0.025, 0.975), a_post, b_post)
+
+media
+IC
+```
+
+Para construir este modelo consideramos las playas como independientes e idénticas, suponiendo el mismo theta para todas. Esto ignora la posible dependencia entre playas por condiciones climáticas comunes, cercanía o corrientes marítimsa, así como sus posibles diferencias en ubicación, tamaño, cercanía a zonas con mayor densidad poblacional, contaminación, etc.
+
+Se cuenta con observaciones de un único día que se supone como representativo de las condiciones de las playas en general. No se toma en cuanta la posible variabilidad entre días o estacionalidad.
+
+Por último, el umbral puede ser arbitrario (aunque entiendo que usualmente debería provenir de estudios pasados) y al reducir el problema a un pregunta de sí o no, se puede ignorar información relevante como que tan cerca del umbral estan las playas o niveles muy extremos.
