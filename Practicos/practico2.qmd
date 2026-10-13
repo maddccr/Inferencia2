@@ -553,10 +553,193 @@ a)  medias a posteriores e intervalos de confianza del $95\%$ para la media $\th
 
 b)  La probabilidad posterior de que $\theta_i < \theta_j < \theta_k$ para las seis permutaciones $\{i, j, k\}$ of ${1, 2, 3}$.
 
+Siguiendo la presentación de la **clase 5,** tenemos $Y_i \sim N(\mu,\sigma^2)$ i.i.d para cada estudiante y observamos $y = (y_1, ..., y_n)$ siendo la conjunta (verosimilitud):
+
+$$p(y \mid \mu, \sigma^2) \propto (\sigma^2)^{-n/2} e^{-\frac{1}{2\sigma^2} \sum{(y_i - \mu)^2}}$$
+Donde la previa es bivariada!! usamos:
+
+$$p(\mu,\sigma^2) = p(\mu \mid \sigma^2)p(\sigma^2)$$
+Para $p(\mu \mid \sigma^2)$ podemos apoyarnos del modelo de un parámetro para $\mu$. Por otro lado con $\mu$ conocida, usando $\sigma^2 \sim IG(a,b)$ se obtiene **(EJERCICIO)** $\sigma^2 \mid y \sim IG(a + n/2, b + \sum{(y_i - \mu)^2}/2)$
+
+Finalmente usamos como previa conjunta
+
+$$p(\mu,\sigma^2) = p(\mu \mid \sigma^2)p(\sigma^2) = N(m_0, \sigma^2/k_0) \times IG(\frac{v_0}{2},\frac{v_0s_0^2}{2})$$
+donde $\tau = s_0^2$ es el valor previo para $\sigma^2$ y $\nu = v_0$ es la información sobre el valor previo.
+
+Para la posterior usamos $p(\mu , \sigma^2 \mid y) =p(\mu \mid  \sigma^2,y)p(\sigma^2 \mid y)$
+
+Para el primero factor, considerando $\sigma^2$ fijo, teniamos:
+
+$$p(\mu \mid  \sigma^2,y) \sim N(m_1, \sigma^2/k_1) \qquad k_1 = k_0 + n \quad m_1 = \frac{k_0m_0 + n\bar{y}}{k_1}$$
+
+Para el segundo factor usamos $p(\sigma^2 \mid y) \propto p(y \mid \sigma^2)p(\sigma^2)\propto p(\sigma^2)\int  p(y \mid \sigma^2, \mu)p(\mu \mid \sigma^2)d\mu$, resolviendo (místico) se llega a:
+
+$$p(\sigma^2 \mid y) \sim IG(\frac{v_1}{2},\frac{v_1s_1^2}{2}) \qquad v_1 = v_0 + n \quad \frac{1}{v_1}(v_0s_0^2 + (n - 1)S_y^2 + \frac{nk_0}{k_1}(\bar{y} - m_0)^2)$$
+
 ```{r}
-#La previa conjugada de una normal, es otra normal!!!
+#un poquito de exploracion
+
+hist(Col1, col = "deeppink", border = "white")
+hist(Col2, col = "pink", border = "white")
+hist(Col3, col = "lightblue", border = "white")
+
+```
+
+```{r}
+#Parametros previas
+m0 <- 5
+k0 <- 1
+v0 <- 2
+s0 <- 4 #sigma^2
+
+#Datos modelos
+n1 <- length(Col1)
+n2 <- length(Col2)
+n3 <- length(Col3)
+
+ybarra1 <- mean(Col1)
+ybarra2 <- mean(Col2)
+ybarra3 <- mean(Col3)
+
+s1 <- var(Col1)
+s2 <- var(Col2)
+s3 <- var(Col3)
+
+#calcular parametros de la posterios
+
+param_post <- function(n, y_barra, S, m0, k0, v0, s0){
+  kn <- k0 + n
+  mn <- (k0*m0 + n*y_barra)/kn
+  
+  vn <- v0 + n
+  sn <- (1/vn)*(v0*s0 + (n - 1)*S + (k0*n*(y_barra - m0)^2)/kn)
+  
+  return( list(kn = kn, mn = mn, vn = vn, sn = sn) )
+}
+
+```
+
+```{r}
+#SIMULAMOS
+simu_mc <- function(n, y_barra, S, m0, k0, v0, s0){
+  param <- param_post(n, y_barra, S, m0, k0, v0, s0)
+  kn <- param$kn
+  mn <- param$mn
+  vn <- param$vn
+  sn <- param$sn
+  
+  #SIMULAR SIGMA
+  sigma_inv <- rgamma(10000, vn/2, (vn*sn)/2)
+  sigma <- 1/sigma_inv
+  
+  #SIMULAR MU DADO SIGMA
+  
+  mu <- rnorm(10000, mn, sqrt(sigma/kn))
+  
+  return(list(mu = mu, sigma = sqrt(sigma)) )
+}
+
+#quantileeees
+
+IC <- function(mu, sigma, alpha){
+  l = (1 - alpha)/2
+  u <- 1 - l
+  
+  IC_mu <- round(quantile(mu, c(l,u)),3)
+  IC_sigma <- round(quantile(sigma, c(l,u)),3)
+  
+  return(list(IC_mu = IC_mu, IC_sigma = IC_sigma))
+}
 
 
+
+```
+
+```{r}
+#ahora si que si
+
+#PARTE A
+#Colegio 1
+simu1<- simu_mc(n1, ybarra1, s1, m0, k0, v0, s0)
+mean(simu1$mu)
+ #sd no var!!!!
+
+IC_1 <- IC(simu1$mu, simu1$sigma, 0.95)
+IC_1$IC_mu
+IC_1$IC_sigma
+
+#Colegio 2
+simu2<- simu_mc(n2, ybarra2, s2, m0, k0, v0, s0)
+mean(simu2$mu)
+mean(simu2$sigma)
+
+IC_2 <- IC(simu2$mu, simu2$sigma, 0.95)
+IC_2$IC_mu
+IC_2$IC_sigma
+
+#Colegio 3
+simu3<- simu_mc(n3, ybarra3, s3, m0, k0, v0, s0)
+mean(simu3$mu)
+mean(simu3$sigma)
+
+IC_3 <- IC(simu3$mu, simu3$sigma, 0.95)
+IC_3$IC_mu
+IC_3$IC_sigma
+
+
+data.frame(
+  "Colegio" = c(1,2,3),
+  "Media Posterior" = c(mean(simu1$mu), mean(simu2$mu), mean(simu3$mu)),
+  "IC_95" = c(paste("[",IC_1$IC_mu[1] ,", ", IC_1$IC_mu[2],"]"),
+               paste("[",IC_2$IC_mu[1] ,", ",IC_2$IC_mu[2] ,"]"),
+               paste("[",IC_3$IC_mu[1],", ",IC_3$IC_mu[2] ,"]")),
+  "Desvío Posterior" = c(mean(simu1$sigma), mean(simu2$sigma), mean(simu3$sigma)),
+  "IC_95" = c(paste("[",IC_1$IC_sigma[1] ,", ", IC_1$IC_sigma[2],"]"),
+              paste("[",IC_2$IC_sigma[1] ,", ",IC_2$IC_sigma[2] ,"]"),
+              paste("[",IC_3$IC_sigma[1],", ",IC_3$IC_sigma[2] ,"]"))
+)
+```
+
+```{r}
+#PARTE B
+
+permu <- as.matrix(expand.grid(1:3, 1:3, 1:3)) #gracias chat
+permu <- permu[apply(permu, 1, function(x) length(unique(x)) == 3), ]
+
+mu_mc <- list(simu1$mu, simu2$mu, simu3$mu) #no las queremos concatenarrr
+permu <- permutations(3)
+
+for (r in 1:nrow(permu)){
+  i <- permu[r,1]
+  j <- permu[r, 2]
+  k <- permu[r,3]
+  
+  p <- mean( mu_mc[[i]] < mu_mc[[j]] & mu_mc[[j]] < mu_mc[[k]])
+  
+  cat(sprintf("P(theta%d < theta%d < theta%d) = %.4f\n",
+              i, j, k, p))
+  
+}
+```
+
+```{r}
+#opcion con funcion recursiva sacada de stack overflow
+
+permutations <- function(n){
+  if(n==1){
+    return(matrix(1))
+  } else {
+    sp <- permutations(n-1)
+    p <- nrow(sp)
+    A <- matrix(nrow=n*p,ncol=n)
+    for(i in 1:n){
+      A[(i-1)*p+1:p,] <- cbind(i,sp+(sp>=i))
+    }
+    return(A)
+  }
+}
+
+#opciones mas corta con library(gtools) // permu <- permutations(3, 3, v = 1:3)
 ```
 
 ## Ejercicio 8 - (5.3 de Hoff)
