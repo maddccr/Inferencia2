@@ -41,7 +41,7 @@ a)  Usando **aproximación por grilla** (*grid approximation*), obtener $10$ mil
 
     #Modificar el código para que funcione correctamente
 
-    grilla <- seq(from =, to = , length.out = )
+    grilla <- seq(from = 0, to = 0.03 , length.out = 5000)
 
     ```
 
@@ -66,10 +66,10 @@ a)  Usando **aproximación por grilla** (*grid approximation*), obtener $10$ mil
 
     funcion_logverosimilitud = function(theta) {
       sum( #Para sumar los logaritmos
-        dbinom(x=, #Para todos los valores de y
-               size = , #Cantidad de vacas muestreadas
+        dbinom(x= y, #Para todos los valores de y (datos)
+               size = 30 , #Cantidad de vacas muestreadas
                prob = theta, #Los valores de theta en los que va a evaluar
-               log = 
+               log = TRUE
         )
       )
     }
@@ -77,7 +77,7 @@ a)  Usando **aproximación por grilla** (*grid approximation*), obtener $10$ mil
 
     #Guardar los valores de la log verosimilitud
     # sapply: A una función le aplica una lista de valores
-    log_verosimilitud <- sapply(X = , FUN = )
+    log_verosimilitud <- sapply(X = grilla, FUN = funcion_logverosimilitud )
 
 
 
@@ -89,7 +89,7 @@ a)  Usando **aproximación por grilla** (*grid approximation*), obtener $10$ mil
     ```{r}
 
     # Densidad previa Uniforme(0, 0.3) evaluada en la grilla
-    log_previa <- dunif(x = ,
+    log_previa <- dunif(x = grilla ,
       min = 0,
       max = 0.3,
       log = TRUE)
@@ -98,12 +98,9 @@ a)  Usando **aproximación por grilla** (*grid approximation*), obtener $10$ mil
     # posterior ∝ verosimilitud x previa
     #
     # Dado que estamos trabajando en escala logarítmica, el producto se transforma en suma.
-    log_posterior <-  #Lo que sabemos de los datos
+    log_posterior <-  log_verosimilitud + log_previa #Lo que sabemos de los datos
                             # + 
                         #La distribución previa
-      
-      
-
       
     # Hasta ahora hemos trabajado en escala logarítmica
     # Transformamos los logaritmos para interpretarlos como probabilidades
@@ -119,10 +116,10 @@ a)  Usando **aproximación por grilla** (*grid approximation*), obtener $10$ mil
     set.seed(1234)
 
     theta_post <- sample(
-      x = , 
-      size = ,
+      x = grilla, 
+      size = 10000,
       replace = TRUE,
-      prob = #La probabilidad posterior
+      prob = posterior_prob#La probabilidad posterior
     )
 
 
@@ -134,10 +131,10 @@ b)  Con las simulaciones obtenidas:
 
     ```{r}
 
-    hist(x = ,
+    hist(x = theta_post ,
          probability = TRUE,
          xlab = expression(theta),
-         breaks = ,
+         breaks = 60, col = "lightblue", border = "white",
          main = "Distribución posterior de theta")
 
     #Pruebe distintos valores para el argumento breaks o dejandolo sin definir
@@ -148,7 +145,7 @@ b)  Con las simulaciones obtenidas:
 
     ```{r, media posterior}
 
-    mean(x=)
+    mean(x= theta_post)
 
     ```
 
@@ -157,11 +154,18 @@ b)  Con las simulaciones obtenidas:
     ```{r}
 
     quantile(x = theta_post,
-      probs = c( , ))
+      probs = c( 0.025, 0.975))
 
     ```
 
 c)  Comentar los resultados. ¿Qué le pasa a la posterior? ¿Por qué creen que ocurre esto, mirando los datos observados?
+
+    ```{r}
+    #Estimacion puntual con los datos
+    mean(y)/30 
+    ```
+
+*La distribución posterior queda concentrada (acumula masa) en el extremo superior de la previa. Los datos obervados sugieren un theta mayor al que limita la previa. La estimación MV es 0.48, favorencias valores de theta mayores a 0.3, lo cual implica que la previa usado fue restrictiva.*
 
 ## Ejercicio 2: algoritmo de rechazo
 
@@ -315,6 +319,69 @@ b)  Con las simulaciones obtenidas:
     - Calcular la media posterior.
     - Calcular un intervalo de credibilidad al $95\%$.
 c)  Comentar los resultados: ¿Tiene sentido esta posterior comparada con la parte i) del ejercicio? ¿Qué tasa de aceptación obtuvieron, y cómo se compara con la de la parte ii) del ejercicio? ¿Por qué creen que pasa esto?
+
+```{r}
+#Reutilizamos las funciones del ejercicio 1 !
+#vero x previa = binom(30, theta) x norm(0.5, 0.12^2)
+
+
+#Elegimos el maximo de la verosimilud, se alcanza en el promedio
+argM <- mean(y)/30
+logM <- funcion_logverosimilitud(argM)
+
+
+set.seed(2026)
+S <- 10000 
+theta_sim <- c() 
+
+#para calcular la tasa de rechazo
+aceptados <- 0
+rechazados <- 0
+
+
+while (length(theta_sim) < S) {
+  
+  theta_star <- rnorm(S, 0.5, 0.12) 
+  #no impongo restriccion sobre el recorrido aunque solo tiene sentido entre 0-1
+  
+  #vapply pq la funcion del ej1 solo acepta un theta por vez 
+  logvero <- vapply(theta_star, funcion_logverosimilitud, numeric(1))
+  
+  u <- runif(S, 0, 1)
+  cond <- log(u) <= logvero - logM
+  
+  aceptados <- length(theta_star[cond]) + aceptados
+  rechazados <- length(theta_star[!cond]) + rechazados
+  
+  theta_sim <- c(theta_sim,
+                 theta_star[cond] 
+  )
+}
+
+theta_sim <- theta_sim[1:S] #solo los primeros 10000
+
+aceptados/(aceptados + rechazados) #20% 
+
+```
+
+```{r}
+hist(theta_sim,
+        probability = TRUE,
+        breaks = 30,
+        xlim = c(0, 1),
+        xlab = expression(theta),
+        ylab = "Densidad",
+        col = "lightpink",
+        border = "white",
+        main = "Simulación por rechazo de la Posterior")
+
+mean(theta_sim)
+round(quantile(theta_sim, c(0.025, 0.975)), 3)
+
+#Tiene mas sentido que la previa anterior, menos restrictiva, y al menos acorde con estos datos en especifico 
+#La posterior se acumula alrededor de estimador MV // que fue usado como M 
+
+```
 
 ## Ejercicio 4. Contaminación en playas de Montevideo
 
@@ -747,6 +814,11 @@ permutations <- function(n){
 Distribuciones marginales: Dadas las observaciones $Y_1, \dots, Y_n \sim \operatorname{i.i.d. } \operatorname{Normal}(\theta, \sigma^2)$ y utilizando la distribución previa conjugada para $\theta$ y $\sigma^2$, derive la fórmula para $p(\theta|y_1, \dots, y_n)$, la distribución posterior marginal de $\theta$ condicionada a los datos pero marginal con respecto a $\sigma^2$.
 
 Verifique su resultado comparando la fórmula obtenida con una estimación de Monte Carlo de la distribución marginal, utilizando valores de su elección para $Y_1, \dots, Y_n, \mu_0, \sigma^2_0, \nu_0$ y $\kappa_0$. Derive también $p(\tilde{\sigma}^2|y_1, \dots, y_n)$, donde $\tilde{\sigma}^2 = 1/\sigma^2$ es la precisión.
+
+```{r}
+#LLORACION 
+
+```
 
 ## Ejercicio 9 - (5.4 de Hoff)
 
