@@ -35,7 +35,7 @@ $$ \theta \sim \text{Uniforme}(0, 0.3) $$
 
 a)  Usando **aproximación por grilla** (*grid approximation*), obtener $10$ mil simulaciones de la distribución posterior de $\theta$.
 
-    -   Definir una grilla de valores de $\theta$ en el soporte de la previa.
+    - Definir una grilla de valores de $\theta$ en el soporte de la previa.
 
     ```{r,warning=FALSE,include=TRUE,echo=TRUE}
 
@@ -45,7 +45,7 @@ a)  Usando **aproximación por grilla** (*grid approximation*), obtener $10$ mil
 
     ```
 
-    -   Calcular la verosimilitud conjunta de las $13$ observaciones para cada valor de la grilla.
+    - Calcular la verosimilitud conjunta de las $13$ observaciones para cada valor de la grilla.
 
     ```{r}
 
@@ -84,7 +84,7 @@ a)  Usando **aproximación por grilla** (*grid approximation*), obtener $10$ mil
 
     ```
 
-    -   Combinar previa y verosimilitud, normalizar, y samplear $10$ mil valores de $\theta$ desde la grilla con esas probabilidades.
+    - Combinar previa y verosimilitud, normalizar, y samplear $10$ mil valores de $\theta$ desde la grilla con esas probabilidades.
 
     ```{r}
 
@@ -130,7 +130,7 @@ a)  Usando **aproximación por grilla** (*grid approximation*), obtener $10$ mil
 
 b)  Con las simulaciones obtenidas:
 
-    -   Graficar la distribución posterior de $\theta$.
+    - Graficar la distribución posterior de $\theta$.
 
     ```{r}
 
@@ -144,7 +144,7 @@ b)  Con las simulaciones obtenidas:
 
     ```
 
-    -   Calcular la media posterior.
+    - Calcular la media posterior.
 
     ```{r, media posterior}
 
@@ -152,7 +152,7 @@ b)  Con las simulaciones obtenidas:
 
     ```
 
-    -   Calcular un intervalo de credibilidad al 95%.
+    - Calcular un intervalo de credibilidad al 95%.
 
     ```{r}
 
@@ -265,13 +265,13 @@ Vamos a obtener simulaciones de la posterior usando el algoritmo de rechazo que 
 **Se pide:**
 
 a)  Usando **rejection sampling**, obtener $10$ mil simulaciones de la distribución posterior de $\theta$.
-    -   Proponer candidatos desde la previa $\operatorname{Normal}(0.5, 0.12^2)$.
-    -   Calcular la verosimilitud conjunta de los datos para cada candidato.
-    -   Definir una cota $M$ adecuada y aceptar/rechazar según corresponda.
+    - Proponer candidatos desde la previa $\operatorname{Normal}(0.5, 0.12^2)$.
+    - Calcular la verosimilitud conjunta de los datos para cada candidato.
+    - Definir una cota $M$ adecuada y aceptar/rechazar según corresponda.
 b)  Con las simulaciones obtenidas:
-    -   Graficar la distribución posterior de $\theta$.
-    -   Calcular la media posterior.
-    -   Calcular un intervalo de credibilidad al $95\%$.
+    - Graficar la distribución posterior de $\theta$.
+    - Calcular la media posterior.
+    - Calcular un intervalo de credibilidad al $95\%$.
 c)  Comentar los resultados: ¿Tiene sentido esta posterior comparada con la parte i) del ejercicio? ¿Qué tasa de aceptación obtuvieron, y cómo se compara con la de la parte ii) del ejercicio? ¿Por qué creen que pasa esto?
 
 ## Ejercicio 4. Contaminación en playas de Montevideo
@@ -329,25 +329,55 @@ a)  Representa gráficamente $p(\theta|y)$ o $p(y|\theta)p(\theta)$ utilizando l
 
 b)  Para muestrear una variable aleatoria $z$ de la distribución de mezcla $wp_1(z)+(1−w)p_0(z)$, primero se lanza una moneda $w$ y sea $x$ el resultado (esto se puede hacer en R con) `x <- rbinom(1, 1, w)`Luego, si $x = 1$, se extrae una muestra de $z$ a partir de $p_1$, y si $x = 0$, se extrae una muestra de $z$ a partir de $p_0$. Mediante esta técnica, obtenga una aproximación de Monte Carlo de la distribución posterior $p(\theta|y)$ y un intervalo de credibilidad del $95\%$ basado en cuantiles, y compárelos con los resultados de la parte a).
 
-RESPUESTAS
+**RESPUESTAS**
 
 La densidad a posteriori del Ejercicio 6 es una mezcla de la forma $\frac{3}{4}Beta(17, 36) + \frac{1}{4}Beta(23, 30)$
 
-Método a）
+**Método a）**
 
 ```{r}
 #Aproximacion por grilla // el soporte de la distribucion beta es (0,1)
-
-theta <- seq(0,1, length.out = 10000)
-mezcla <- 0.75*dbeta(theta,17,36) + 0.25*dbeta(theta,23,30)
+alpha <- 0.75 
+theta <- seq(0,1, length.out = 10000) #grilla 
+mezcla <- alpha*dbeta(theta,17,36) + (1 - alpha)*dbeta(theta,23,30)
 
 plot(theta, mezcla,
-     type = "l", lwd = 1, color = "lightblue",
+     type = "l", lwd = 1, col= "lightblue",
      xlab = expression(theta),
-     ylab = expression())
+     ylab = expression(p(theta~"|"~y)),
+     main = "Distribucion posterior de la mezcla")
 
+#Aproximar intervalo de credibilidad en base a las simulaciones
+
+
+#mezcla tiene el valor para cada x, no sirve hacer quantile!!
+#FALTA CALCULAR IC 
 ```
 
+**Método b)**
+
+```{r}
+set.seed(123)
+
+z_mc <- c()
+for(i in 1:10000) {
+  x <- rbinom(1, 1, alpha)
+  z <- ifelse(x == 1, rbeta(1,17,36), rbeta(1, 23, 30))
+  z_mc <- c(z_mc, z)
+} #contiene valores de theta
+
+hist(z_mc, breaks = 100, probability = TRUE,
+     type = "l", lwd = 1, col= "lightblue", border = "white",
+     xlab = expression(theta),
+     ylab = expression(p(theta~"|"~y)),
+     main = "Distribucion posterior de la mezcla (MC)",
+     xlim = c(0,1))
+
+lines(density(z_mc), col = "blue", lwd = 1)
+
+IC <- quantile(z_mc, c(0.025, 0.975)) 
+round(IC, 3)
+```
 
 ## Ejercicio 6 - (4.7 de Hoff)
 
@@ -370,6 +400,91 @@ i\) Calcula estimaciones de la densidad posterior de Y usando el comando `densit
 ii\) Ordena estas probabilidades discretas en orden decreciente.
 
 iii\) Determine el primer valor de probabilidad tal que la suma acumulada de los valores ordenados supere $0.75$. Su región HPD incluye todos los valores de y cuya probabilidad discretizada sea superior a este umbral. Describa su región HPD y compárela con la región basada en cuantiles.
+
+**RESPUESTAS**
+
+```{r}
+
+#Predictiva posterior p(y_hat | y)
+
+coef_mezcla <- c(0.31, 0.46, 0.23)
+y_pred <- numeric(5000)
+
+#simulacion de los parametros MC
+for (i in 1:5000){
+  
+  #SIMUALR VALORES DE SIGMA
+  inv_sigma <- rgamma(1, 10, 2.5)
+  sigma_2 <- 1/inv_sigma^2
+  sigma <- sqrt(sigma_2)
+  
+  #SIMULAR VALORES DE THETA condicional a sigma
+  theta <- rnorm(1, 4.1, sigma/20)
+  
+  #SIMULAR Y // elegir de que termino de la mezcla sacar
+  
+  z <- sample(c(1,2,3), 1, prob = coef_mezcla) #onda multinomial!!!
+  y <- ifelse(z == 1, rnorm(1, theta, sigma), 
+              ifelse(z == 2, rnorm(1, 2*theta, 2*sigma),
+                                   rnorm(1, 3*theta, 3*sigma)))
+  y_pred[i] <- y
+  
+}
+
+
+#PLOT
+hist(y_pred, breaks = 100, probability = TRUE,
+     col = "lightblue", border = "white",
+     main = "Distribución predictiva posterior",
+     xlab = expression(hat(y)), ylab = "Densidad",
+     xlim = range(y_pred))
+
+lines(density(y_pred), col = "blue", lwd = 2)
+```
+
+```{r}
+#IC 75%
+
+#a mano es 0.125 y 0.875
+alpha <- 0.75
+l <- (1 - alpha)/2
+u <- 1 - l
+quantile(y_pred, c(l, u))
+```
+
+```{r}
+#HPD 75%
+
+#i estimar la densidad y normalizar
+
+densidad <- density(y_pred,n = 5000)
+probs <- densidad$y/sum(densidad$y) #probabilidades discretizadas
+
+#ii ordenar de forma decreciente
+
+probs_dec <- sort(probs, decreasing = TRUE)
+
+#iii elegir valor tal que la cumsum supera 0.75 
+
+cumsum_y <- cumsum(probs_dec)
+index <- which(cumsum_y > alpha)[1]
+
+umbral <- probs_dec[index]
+
+#plotear
+hpd <- probs >= umbral
+
+plot(densidad$x, densidad$y, type = "l", col = "pink", lwd = 1,
+     xlab = expression(hat(y)), 
+     ylab = "Densidad", main = "HPD al 75%")
+
+lines(densidad$x[hpd], densidad$y[hpd], type = "h", col = "pink")
+lines(densidad$x, ifelse(hpd, densidad$y, NA), col = "deeppink", lwd = 1.5)
+abline(h = umbral*sum(densidad$y), col = "purple")
+
+text(x = 15, y = umbral*sum(densidad$y),
+     labels = "Umbral HPD", pos = 3, col = "purple")
+```
 
 ## Ejercicio 7 - (5.1 de Hoff)
 
@@ -395,6 +510,10 @@ Los archivos **school1.dat**, **school2.dat** y **school3.dat** contienen datos 
 a)  medias a posteriores e intervalos de confianza del $95\%$ para la media $\theta$ y la desviación estándar $\sigma$ de cada escuela.
 
 b)  La probabilidad posterior de que $\theta_i < \theta_j < \theta_k$ para las seis permutaciones $\{i, j, k\}$ of ${1, 2, 3}$.
+
+```{r}
+
+```
 
 ## Ejercicio 8 - (5.3 de Hoff)
 
