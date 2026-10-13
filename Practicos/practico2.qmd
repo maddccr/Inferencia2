@@ -182,53 +182,64 @@ a)  Obtener 5000 valores simulados de $\operatorname{Beta}(2, 5)$
 
 b)  comparar la simulaciones obtenidas con la distribución teórica
 
-```{r}
+**RESPUESTAS**
 
-# Parámetros de la Beta
+En este caso de prueba contamos con la forma analítica de la densidad objetivo y no con datos, por lo tanto hallaremos un $M$ para el algoritmo mediante una fórmula algebráica. Dado que la propuesta $g(\theta)$ es una uniforme, es decir constante, tiene sentido multiplicarla por el máximo de la densidad, siendo entonces mayor o igual al máximo para todo el recorrido y por lo tanto envolvente de $f$
+
+Sea $X \sim Beta(\alpha, \beta)$ con $\alpha, \beta > 1$ se tiene que (Notas de Inferencia 1):
+
+$$ Moda(X) = \frac{\alpha -1}{\alpha + \beta -2} $$
+
+```{r}
+#Parámetros de la Beta
 
 a <- 2
 b <- 5
 
-# Candidato a M
-# La moda de esa Beta(2,5)?
-# La densidad de la Beta (2,5) en la moda?
-moda_beta <- 
+#Candidato a M
 
-max_beta <- 
+moda_beta <- (a -1)/(a + b - 2) #argmax!
+max_beta <- dbeta(moda_beta, a, b) #evaluar la funcion/densidad en el argmax
 
 ```
 
 ```{r}
+#El algoritmo de rechazo
 
-# El algoritmo de rechazo
+set.seed(2026) #:)
 
-set.seed(2026)
+S <- 5000 #cantidad de simus pedidas
 
-S <- 5000
+theta_sim <- c() #Guardar simus // aumenta de forma dinamica
 
-theta_sim <- c() #Acá vamos a guardar las simulaciones
-
-#Lo proponemos con un while porque no sabemos cuando exactamente se va a llegar a las 5000 aceptaciones, y lo condicionamos para encontrar más de 5000
 while (length(theta_sim) < S) {
+  #El while para cuando se llega a 5000 o mas aceptaciones
   
-  # Proponemos muchos candidatos a la vez
-  theta_star <- 
+  #necesitamos valores de theta en el recorrido // sample
+  theta_star <- runif(S, 0, 1)  
   
-  # Probabilidad de aceptación
-  prob_acept <- 
+  #Probabilidad de aceptación
+  prob_acept <- dbeta(theta_star, a, b)/max_beta #f(theta)/M
   
-  # Uniformes para decidir aceptación/rechazo
-  u <- 
+  #Uniformes para decidir aceptación/rechazo
+  u <- runif(S, 0, 1)
   
-  # Nos quedamos con los aceptados y los vamos uniendo. El criterio de parada es superar los 5000
   theta_sim <- c(theta_sim,
-                 theta_star[u <= prob_acept])
+                 theta_star[u <= prob_acept] #condicion de aceptacion
+  )
 }
 
-# Nos quedamos con los 5000 primeros porque en el while le pedimos que abarque más
-theta_sim <- theta_sim[1:S]
+theta_sim <- theta_sim[1:S] #solo los primeros 5000
 
 
+
+```
+
+```{r}
+#Un vistazo a la simulacion 
+head(theta_sim)
+summary(theta_sim)
+moda_beta
 
 ```
 
@@ -240,6 +251,9 @@ hist(theta_sim,
      breaks = ,
      xlim = c(0, 1),
      xlab = expression(theta),
+     ylab = "Densidad",
+     col = "lightpink",
+     border = "white",
      main = "Simulación por rechazo de Beta(2,5)")
 
 # Densidad teórica
@@ -247,9 +261,37 @@ curve(expr = dbeta(x, 2, 5),
       from = 0,
       to = 1,
       add = TRUE,
+      col = "deeppink",
       lwd = 2)
 
-# ¿Otra forma de compararlas?
+#Tambien podemos comparar con algunas medidas de resumen
+
+#TEORICAS
+esperanza <- a / (a + b)
+varianza <- (a*b) /( (a + b + 1)*(a + b)^2)
+
+paste0("Esperanza Teórica: ", round(esperanza, 3))
+paste0("Varianza Teórica: ", round(varianza,3))
+
+#SIMULADAS
+
+paste0("Esperanza Simulada: ", round(mean(theta_sim), 3))
+paste0("Varianza Simulada: ", round(var(theta_sim),3))
+
+
+#O con las distibuciones acumuladas...
+
+qqplot(
+  qbeta(ppoints(5000), a, b),
+  sort(theta_sim),
+  main = "QQplot: Simulación vs Teórica",
+  cex = 0.7,
+  col = "lightpink",
+  xlab = "Cuantiles teóricos",
+  ylab = "Cuantiles simulados"
+)
+
+abline(0, 1, lwd = 2, col = "deeppink")
 
 
 ```
@@ -512,6 +554,8 @@ a)  medias a posteriores e intervalos de confianza del $95\%$ para la media $\th
 b)  La probabilidad posterior de que $\theta_i < \theta_j < \theta_k$ para las seis permutaciones $\{i, j, k\}$ of ${1, 2, 3}$.
 
 ```{r}
+#La previa conjugada de una normal, es otra normal!!!
+
 
 ```
 
